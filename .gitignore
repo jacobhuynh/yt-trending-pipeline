@@ -1,2 +1,8 @@
 .env
+
+# Go
 *.exe
+*.out
+
+# Mac
+.DS_Store
