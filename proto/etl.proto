@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package etl;
+option go_package = "github.com/jacobhuynh/youtube-etl-pipeline/pb;pb";
+
+enum JobState {
+    JOB_STATE_UNSPECIFIED = 0;
+    JOB_STATE_DONE        = 1;
+    JOB_STATE_FAILED      = 2;
+    JOB_STATE_QUEUED      = 3;
+    JOB_STATE_RUNNING     = 4;
+    JOB_STATE_RETRYING    = 5;
+    JOB_STATE_DEAD        = 6;
+}
+
+message JobRequest {
+    string region = 1;
+    int32 category_id = 2;
+    int32 max_results = 3;
+    string idempotency_key = 4;
+    map<string, string> metadata = 5;
+}
+
+message JobResponse {
+    string job_id = 1;
+    JobState state = 2;
+    string message = 3;
+    google.protobuf.Timestamp created_at = 4;
+}
+
+message JobStatus {
+    string job_id = 1;
+    JobState state = 2;
+    string region = 3;
+    int32 category_id = 4;
+    int32 attempt = 5;
+    int32 max_attempts = 6;
+    int32 videos_fetched = 7;
+    int32 videos_inserted = 8;
+    string error_message = 9;
+    google.protobuf.Timestamp next_retry_at = 10;
+    google.protobuf.Timestamp created_at = 11;
+    google.protobuf.Timestamp started_at = 12;
+    google.protobuf.Timestamp completed_at = 13;
+    map<string, string> metadata = 14;
+}
+
+message JobUpdate {
+    string job_id = 1;
+    JobState state = 2;
+    int32 videos_fetched = 3;
+    int32 videos_inserted = 4;
+    string message = 5;
+    google.protobuf.Timestamp occurred_at = 6;
+}
+
+message BatchResponse {
+    int32 total_received = 1;
+    int32 total_accepted = 2;
+    int32 total_rejected = 3;
+    repeated BatchJobResult results = 4;
+}
+
+message BatchJobResult {
+    string job_id = 1;
+    JobState state = 2;
+    string idempotency_key = 3;
+    string message = 4;
+}
+
+message GetJobStatusRequest {
+    string job_id = 1;
+}
+
+message WatchJobRequest {
+    string job_id = 1;
+}
+
+service ETLService {
+    rpc SubmitJob(JobRequest) returns (JobResponse);
+    rpc SubmitBatch(stream JobRequest) returns (BatchResponse);
+    rpc GetJobStatus(GetJobStatusRequest) returns (JobStatus);
+    rpc WatchJob(WatchJobRequest) returns (stream JobUpdate);
+}
