@@ -88,6 +88,35 @@ func (s *ETLServer) GetJobStatus(ctx context.Context, req *pb.GetJobStatusReques
 	return status, nil
 }
 
+func (s *ETLServer) WatchJob(req *pb.WatchJobRequest, stream pb.ETLService_WatchJobServer) error {
+	var lastState pb.JobState
+	for {
+		select {
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		default:
+		}
+
+		status, err := s.db.GetJobByID(stream.Context(), req.JobId)
+		if err != nil {
+			return err
+		}
+
+		if status.State != lastState {
+			if err := stream.Send(&pb.JobUpdate{JobId: status.JobId, State: status.State, VideosFetched: status.VideosFetched, VideosInserted: status.VideosInserted, Message: "State updated.", OccurredAt: timestamppb.Now()}); err != nil {
+				return err
+			}
+			lastState = status.State
+		}
+
+		if status.State == pb.JobState_JOB_STATE_DONE || status.State == pb.JobState_JOB_STATE_FAILED || status.State == pb.JobState_JOB_STATE_DEAD {
+			return nil
+		}
+
+		time.Sleep(2 * time.Second)
+	}
+}
+
 // Helpers
 func (s *ETLServer) processJob(ctx context.Context, req *pb.JobRequest) (string, bool, error) {
 	status, err := s.db.GetJobByIdempotencyKey(ctx, req.IdempotencyKey)
