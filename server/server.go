@@ -56,8 +56,16 @@ func (s *ETLServer) SubmitBatch(stream pb.ETLService_SubmitBatchServer) error {
 		totalReceived++
 
 		jobId, jobCreated, err := s.processJob(stream.Context(), req)
-		if err != nil || !jobCreated {
+		if err != nil {
 			totalRejected++
+		} else if !jobCreated {
+			totalRejected++
+			results = append(results, &pb.BatchJobResult{
+				JobId:          jobId,
+				State:          pb.JobState_JOB_STATE_QUEUED,
+				IdempotencyKey: req.IdempotencyKey,
+				Message:        "Job already exists with the same idempotency key.",
+			})
 		} else {
 			totalAccepted++
 			s.jobQueue <- req
