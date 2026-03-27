@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
+	client "github.com/jacobhuynh/youtube-etl-pipeline/youtube"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -74,13 +75,19 @@ func (d *DB) UpdateJobCompleted(ctx context.Context, jobId string, completedAt t
 	return err
 }
 
-func (d *DB) UpdateJobFailed(ctx context.Context, jobId string, errorMessage string, attempt int32, nextRetryAt *time.Time) error {
-	_, err := d.pool.Exec(ctx, "UPDATE jobs SET state = $1, error_message = $2, attempt = $3, next_retry_at = $4 WHERE job_id = $5", "failed", errorMessage, attempt, nextRetryAt, jobId)
+func (d *DB) UpdateJobRetrying(ctx context.Context, jobId string, errorMessage string, attempt int32, nextRetryAt *time.Time) error {
+	_, err := d.pool.Exec(ctx, "UPDATE jobs SET state = $1, error_message = $2, attempt = $3, next_retry_at = $4 WHERE job_id = $5", "retrying", errorMessage, attempt, nextRetryAt, jobId)
 	return err
 }
 
 func (d *DB) UpdateJobDead(ctx context.Context, jobId string, errorMessage string) error {
 	_, err := d.pool.Exec(ctx, "UPDATE jobs SET state = $1, error_message = $2, next_retry_at = NULL WHERE job_id = $3", "dead", errorMessage, jobId)
+	return err
+}
+
+func (d *DB) InsertVideo(ctx context.Context, video *client.Video) error {
+	_, err := d.pool.Exec(ctx, "INSERT INTO videos (video_id, job_id, region, fetched_at, title, channel_id, channel_title, published_at, category_id, view_count, like_count, comment_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+		video.VideoId, video.JobId, video.Region, video.FetchedAt, video.Title, video.ChannelId, video.ChannelTitle, video.PublishedAt, video.CategoryId, video.ViewCount, video.LikeCount, video.CommentCount)
 	return err
 }
 
@@ -132,8 +139,6 @@ func stringToJobState(s string) pb.JobState {
 		return pb.JobState_JOB_STATE_RETRYING
 	case "done":
 		return pb.JobState_JOB_STATE_DONE
-	case "failed":
-		return pb.JobState_JOB_STATE_FAILED
 	case "dead":
 		return pb.JobState_JOB_STATE_DEAD
 	default:

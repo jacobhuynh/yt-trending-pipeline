@@ -10,18 +10,19 @@ import (
 
 	"github.com/jacobhuynh/youtube-etl-pipeline/db"
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
+	"github.com/jacobhuynh/youtube-etl-pipeline/worker"
 )
 
 type ETLServer struct {
 	pb.UnimplementedETLServiceServer
 	db       *db.DB
-	jobQueue chan *pb.JobRequest
+	jobQueue chan *worker.Job
 }
 
 func New(d *db.DB) *ETLServer {
 	return &ETLServer{
 		db:       d,
-		jobQueue: make(chan *pb.JobRequest, 100),
+		jobQueue: make(chan *worker.Job, 100),
 	}
 }
 
@@ -35,7 +36,7 @@ func (s *ETLServer) SubmitJob(ctx context.Context, req *pb.JobRequest) (*pb.JobR
 		return &pb.JobResponse{JobId: jobId, State: pb.JobState_JOB_STATE_QUEUED, Message: "Job already exists with the same idempotency key.", CreatedAt: timestamppb.New(time.Now())}, nil
 	}
 
-	s.jobQueue <- req
+	s.jobQueue <- &worker.Job{ID: jobId, Req: req}
 
 	return &pb.JobResponse{JobId: jobId, State: pb.JobState_JOB_STATE_QUEUED, Message: "Job queued successfully.", CreatedAt: timestamppb.New(time.Now())}, nil
 }
@@ -68,7 +69,7 @@ func (s *ETLServer) SubmitBatch(stream pb.ETLService_SubmitBatchServer) error {
 			})
 		} else {
 			totalAccepted++
-			s.jobQueue <- req
+			s.jobQueue <- &worker.Job{ID: jobId, Req: req}
 			results = append(results, &pb.BatchJobResult{
 				JobId:          jobId,
 				State:          pb.JobState_JOB_STATE_QUEUED,
@@ -115,6 +116,11 @@ func (s *ETLServer) WatchJob(req *pb.WatchJobRequest, stream pb.ETLService_Watch
 
 		time.Sleep(2 * time.Second)
 	}
+}
+
+// Getters
+func (s *ETLServer) JobQueue() chan *worker.Job {
+	return s.jobQueue
 }
 
 // Helpers

@@ -13,10 +13,14 @@ import (
 	"github.com/jacobhuynh/youtube-etl-pipeline/db"
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
 	"github.com/jacobhuynh/youtube-etl-pipeline/server"
+	"github.com/jacobhuynh/youtube-etl-pipeline/worker"
+	client "github.com/jacobhuynh/youtube-etl-pipeline/youtube"
 )
 
 func main() {
+	numWorkers := 5
 	databaseURL := os.Getenv("DATABASE_URL")
+	youtubeClient := &client.Client{APIKey: os.Getenv("YOUTUBE_API_KEY")}
 
 	ctx := context.Background()
 	db, err := db.New(ctx, databaseURL)
@@ -33,6 +37,11 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterETLServiceServer(grpcServer, server)
+
+	for i := 0; i < numWorkers; i++ {
+		w := worker.New(server.JobQueue(), db, youtubeClient)
+		w.Start(ctx)
+	}
 
 	go func() {
 		log.Printf("gRPC server listening on :50051")
