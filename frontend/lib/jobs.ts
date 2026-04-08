@@ -86,6 +86,7 @@ export async function generateIdempotencyKey(
 }
 
 export const YOUTUBE_CATEGORIES: { id: number; label: string }[] = [
+  { id: 0, label: "All Categories" },
   { id: 1, label: "Film & Animation" },
   { id: 2, label: "Autos & Vehicles" },
   { id: 10, label: "Music" },
@@ -117,6 +118,10 @@ export const REGIONS: { code: string; label: string }[] = [
   { code: "MX", label: "Mexico" },
   { code: "IT", label: "Italy" },
 ];
+
+export function getCategoryLabel(id: number): string {
+  return YOUTUBE_CATEGORIES.find((c) => c.id === id)?.label ?? `Category ${id}`;
+}
 
 export function isTerminalState(state: number): boolean {
   return state === 1 || state === 2 || state === 6;

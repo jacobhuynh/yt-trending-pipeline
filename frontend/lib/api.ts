@@ -72,6 +72,19 @@ export function watchJob(
   return () => es.close();
 }
 
+export async function getTrackedRegions(): Promise<{ count: number; regions: string[] }> {
+  const res = await fetch(`${BASE_URL}/analytics/regions`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch tracked regions");
+  return res.json();
+}
+
+export async function getVideoCount(): Promise<number> {
+  const res = await fetch(`${BASE_URL}/videos/count`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch video count");
+  const data = await res.json();
+  return data.count as number;
+}
+
 export async function getVideos(params: {
   region?: string;
   category_id?: number;

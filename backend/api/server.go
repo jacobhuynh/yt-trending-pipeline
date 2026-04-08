@@ -35,7 +35,9 @@ func (s *APIServer) RegisterRoutes(r *gin.Engine) {
 	r.POST("/jobs/batch", s.handleSubmitBatch)
 	r.GET("/jobs/:id", s.handleGetJobStatus)
 	r.GET("/jobs/:id/watch", s.handleWatchJob)
+	r.GET("/videos/count", s.handleGetVideoCount)
 	r.GET("/videos", s.handleGetVideos)
+	r.GET("/analytics/regions", s.handleGetTrackedRegions)
 	r.GET("/analytics/top-channels", s.handleGetTopChannels)
 	r.GET("/analytics/videos/:id/trend", s.handleGetVideoTrend)
 }
@@ -145,6 +147,24 @@ func (s *APIServer) handleGetTopChannels(c *gin.Context) {
 	}
 
 	c.JSON(200, channels)
+}
+
+func (s *APIServer) handleGetVideoCount(c *gin.Context) {
+	count, err := s.db.GetVideoCount(c.Request.Context())
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get video count"})
+		return
+	}
+	c.JSON(200, gin.H{"count": count})
+}
+
+func (s *APIServer) handleGetTrackedRegions(c *gin.Context) {
+	count, regions, err := s.db.GetTrackedRegions(c.Request.Context())
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get tracked regions"})
+		return
+	}
+	c.JSON(200, gin.H{"count": count, "regions": regions})
 }
 
 func (s *APIServer) handleGetVideoTrend(c *gin.Context) {

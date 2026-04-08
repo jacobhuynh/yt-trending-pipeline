@@ -3,21 +3,24 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { getVideos } from "@/lib/api";
+import { getVideoCount, getTrackedRegions } from "@/lib/api";
 import { Film, Globe, ArrowRight, Loader2 } from "lucide-react";
-import { REGIONS } from "@/lib/jobs";
 
 export function VideosSummaryCard() {
   const [count, setCount] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [regionCount, setRegionCount] = useState<number | null>(null);
+  const [loadingCount, setLoadingCount] = useState(true);
+  const [loadingRegions, setLoadingRegions] = useState(true);
 
   useEffect(() => {
-    getVideos({ limit: 50, offset: 0 })
-      .then((videos) => {
-        setCount(videos.length);
-      })
+    getVideoCount()
+      .then((n) => setCount(n))
       .catch(() => setCount(null))
-      .finally(() => setLoading(false));
+      .finally(() => setLoadingCount(false));
+    getTrackedRegions()
+      .then((d) => setRegionCount(d.count))
+      .catch(() => setRegionCount(null))
+      .finally(() => setLoadingRegions(false));
   }, []);
 
   return (
@@ -30,10 +33,10 @@ export function VideosSummaryCard() {
                 Videos Ingested
               </p>
               <p className="text-2xl font-bold text-white mt-1">
-                {loading ? (
+                {loadingCount ? (
                   <Loader2 className="h-5 w-5 animate-spin text-zinc-500 inline" />
                 ) : count != null ? (
-                  count >= 50 ? "50+" : count
+                  count.toLocaleString()
                 ) : (
                   "—"
                 )}
@@ -52,7 +55,13 @@ export function VideosSummaryCard() {
                 Regions Tracked
               </p>
               <p className="text-2xl font-bold text-white mt-1">
-                {REGIONS.length}
+                {loadingRegions ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-zinc-500 inline" />
+                ) : regionCount != null ? (
+                  regionCount.toLocaleString()
+                ) : (
+                  "—"
+                )}
               </p>
             </div>
             <Globe className="h-8 w-8 text-zinc-700" />

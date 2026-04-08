@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { JobStatusBadge } from "@/components/job-status-badge";
 import { getJobStatus } from "@/lib/api";
-import { formatRelativeTime, YOUTUBE_CATEGORIES } from "@/lib/jobs";
+import { formatRelativeTime, getCategoryLabel } from "@/lib/jobs";
 import type { JobStatus } from "@/types/jobs";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -62,9 +62,6 @@ function getStoredJobIds(): string[] {
   return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
 }
 
-function getCategoryLabel(id: number): string {
-  return YOUTUBE_CATEGORIES.find((c) => c.id === id)?.label ?? `Cat ${id}`;
-}
 
 export function JobsList() {
   const [jobs, setJobs] = useState<JobStatus[]>([]);

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { YOUTUBE_CATEGORIES, REGIONS, generateIdempotencyKey } from "@/lib/jobs";
+import { YOUTUBE_CATEGORIES, REGIONS, generateIdempotencyKey, getCategoryLabel } from "@/lib/jobs";
 import { submitJob } from "@/lib/api";
 import { storeJobId, storeJobMeta } from "@/components/jobs-list";
 import { Loader2, Send } from "lucide-react";
@@ -101,7 +101,9 @@ export function JobForm() {
                 id="category"
                 className="bg-zinc-800 border-zinc-700 text-white"
               >
-                <SelectValue />
+                <span data-slot="select-value" className="flex flex-1 text-left">
+                  {getCategoryLabel(parseInt(categoryId))}
+                </span>
               </SelectTrigger>
               <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
                 {YOUTUBE_CATEGORIES.map((c) => (

@@ -15,7 +15,7 @@ import { getJobStatus, watchJob } from "@/lib/api";
 import {
   formatTimestamp,
   isTerminalState,
-  YOUTUBE_CATEGORIES,
+  getCategoryLabel,
 } from "@/lib/jobs";
 import type { JobStatus, JobUpdate } from "@/types/jobs";
 import { Loader2, ArrowLeft, Wifi, WifiOff } from "lucide-react";
@@ -25,9 +25,6 @@ interface JobDetailProps {
   jobId: string;
 }
 
-function getCategoryLabel(id: number): string {
-  return YOUTUBE_CATEGORIES.find((c) => c.id === id)?.label ?? `Category ${id}`;
-}
 
 function StatRow({
   label,

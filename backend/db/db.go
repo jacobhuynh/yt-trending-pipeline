@@ -107,35 +107,36 @@ func (d *DB) InsertVideo(ctx context.Context, video *client.Video) error {
 }
 
 func (d *DB) GetVideos(ctx context.Context, region string, categoryId int32, fetchedAfter time.Time, fetchedBefore time.Time, limit int32, offset int32) ([]*client.Video, error) {
-	query := "SELECT video_id, job_id, region, fetched_at, title, channel_id, channel_title, published_at, category_id, view_count, like_count, comment_count FROM videos WHERE 1=1"
+	inner := "SELECT DISTINCT ON (video_id) video_id, job_id, region, fetched_at, title, channel_id, channel_title, published_at, category_id, view_count, like_count, comment_count FROM videos WHERE 1=1"
 	args := []any{}
 	argNum := 1
 
 	if region != "" {
-		query += fmt.Sprintf(" AND region = $%d", argNum)
+		inner += fmt.Sprintf(" AND region = $%d", argNum)
 		args = append(args, region)
 		argNum++
 	}
 
 	if categoryId != 0 {
-		query += fmt.Sprintf(" AND category_id = $%d", argNum)
+		inner += fmt.Sprintf(" AND category_id = $%d", argNum)
 		args = append(args, categoryId)
 		argNum++
 	}
 
 	if !fetchedAfter.IsZero() {
-		query += fmt.Sprintf(" AND fetched_at > $%d", argNum)
+		inner += fmt.Sprintf(" AND fetched_at > $%d", argNum)
 		args = append(args, fetchedAfter)
 		argNum++
 	}
 
 	if !fetchedBefore.IsZero() {
-		query += fmt.Sprintf(" AND fetched_at < $%d", argNum)
+		inner += fmt.Sprintf(" AND fetched_at < $%d", argNum)
 		args = append(args, fetchedBefore)
 		argNum++
 	}
 
-	query += fmt.Sprintf(" ORDER BY fetched_at DESC LIMIT $%d OFFSET $%d", argNum, argNum+1)
+	inner += " ORDER BY video_id, fetched_at DESC"
+	query := fmt.Sprintf("SELECT * FROM (%s) sub ORDER BY view_count DESC LIMIT $%d OFFSET $%d", inner, argNum, argNum+1)
 	args = append(args, limit, offset)
 
 	rows, err := d.pool.Query(ctx, query, args...)
@@ -199,6 +200,19 @@ func (d *DB) GetTopChannels(ctx context.Context, region string, limit int32) ([]
 	}
 
 	return stats, nil
+}
+
+func (d *DB) GetVideoCount(ctx context.Context) (int64, error) {
+	var count int64
+	err := d.pool.QueryRow(ctx, "SELECT COUNT(*) FROM videos").Scan(&count)
+	return count, err
+}
+
+func (d *DB) GetTrackedRegions(ctx context.Context) (int64, []string, error) {
+	var count int64
+	var regions []string
+	err := d.pool.QueryRow(ctx, "SELECT COUNT(DISTINCT region), array_agg(DISTINCT region) FROM videos").Scan(&count, &regions)
+	return count, regions, err
 }
 
 func (d *DB) GetVideoTrend(ctx context.Context, videoId string) ([]*VideoTrendPoint, error) {
