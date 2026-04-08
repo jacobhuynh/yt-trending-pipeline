@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getTopChannels, getVideos } from "@/lib/api";
+import { getTopChannels, getVideos, getVideoCount, getTrackedRegions } from "@/lib/api";
 import { REGIONS } from "@/lib/jobs";
 import type { TopChannel, Video } from "@/types/videos";
 import { Loader2, Trophy, Film, Globe } from "lucide-react";
@@ -70,6 +70,9 @@ export function AnalyticsDashboard() {
   const [loadingChannels, setLoadingChannels] = useState(true);
   const [loadingVideos, setLoadingVideos] = useState(true);
   const [channelsError, setChannelsError] = useState<string | null>(null);
+  const [videoCount, setVideoCount] = useState<number | null>(null);
+  const [trackedRegions, setTrackedRegions] = useState<string[]>([]);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   const fetchChannels = useCallback(async () => {
     setLoadingChannels(true);
@@ -105,6 +108,18 @@ export function AnalyticsDashboard() {
     fetchVideos();
   }, [fetchChannels, fetchVideos]);
 
+  useEffect(() => {
+    setLoadingStats(true);
+    Promise.all([getVideoCount(), getTrackedRegions()])
+      .then(([count, regions]) => {
+        setVideoCount(count);
+        setTrackedRegions(regions.regions);
+        setRegion((r) => (regions.regions.includes(r) ? r : (regions.regions[0] ?? r)));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingStats(false));
+  }, []);
+
   const mostViewed = videos.reduce<Video | null>(
     (best, v) => (best == null || v.ViewCount > best.ViewCount ? v : best),
     null
@@ -133,11 +148,14 @@ export function AnalyticsDashboard() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-            {REGIONS.map((r) => (
-              <SelectItem key={r.code} value={r.code} className="focus:bg-zinc-700 text-sm">
-                {r.label} ({r.code})
-              </SelectItem>
-            ))}
+            {(trackedRegions.length > 0 ? trackedRegions : REGIONS.map((r) => r.code)).map((code) => {
+              const meta = REGIONS.find((r) => r.code === code);
+              return (
+                <SelectItem key={code} value={code} className="focus:bg-zinc-700 text-sm">
+                  {meta ? `${meta.label} (${code})` : code}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
@@ -152,10 +170,12 @@ export function AnalyticsDashboard() {
                   Videos Ingested
                 </p>
                 <p className="text-2xl font-bold text-white mt-1">
-                  {loadingVideos ? (
+                  {loadingStats ? (
                     <Loader2 className="h-5 w-5 animate-spin text-zinc-500 inline" />
+                  ) : videoCount != null ? (
+                    videoCount.toLocaleString()
                   ) : (
-                    videos.length >= 200 ? "200+" : videos.length
+                    "—"
                   )}
                 </p>
               </div>
@@ -172,7 +192,11 @@ export function AnalyticsDashboard() {
                   Regions Tracked
                 </p>
                 <p className="text-2xl font-bold text-white mt-1">
-                  {REGIONS.length}
+                  {loadingStats ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-zinc-500 inline" />
+                  ) : (
+                    trackedRegions.length || "—"
+                  )}
                 </p>
               </div>
               <Globe className="h-8 w-8 text-zinc-700" />
