@@ -9,7 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 import {
@@ -158,71 +157,144 @@ export function VideoTrendChart({ videoId }: Props) {
               </CardContent>
             </Card>
           ) : (
-            <Card className="bg-zinc-900 border-zinc-800">
-              <CardHeader>
-                <CardTitle className="text-white text-sm">View Count Over Time</CardTitle>
-                <CardDescription className="text-zinc-400">
-                  {trend.length} data point{trend.length !== 1 ? "s" : ""}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={320}>
-                  <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                    <XAxis
-                      dataKey="time"
-                      tick={{ fill: "#71717a", fontSize: 11 }}
-                      tickLine={false}
-                      axisLine={{ stroke: "#3f3f46" }}
-                    />
-                    <YAxis
-                      tickFormatter={formatCount}
-                      tick={{ fill: "#71717a", fontSize: 11 }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={48}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#18181b",
-                        border: "1px solid #3f3f46",
-                        borderRadius: "6px",
-                        fontSize: "12px",
-                        color: "#f4f4f5",
-                      }}
-                      formatter={(value) => (typeof value === "number" ? formatCount(value) : value)}
-                    />
-                    <Legend
-                      wrapperStyle={{ fontSize: "12px", color: "#a1a1aa" }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="Views"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: "#3b82f6" }}
-                      activeDot={{ r: 5 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="Likes"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: "#10b981" }}
-                      activeDot={{ r: 5 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="Comments"
-                      stroke="#f59e0b"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: "#f59e0b" }}
-                      activeDot={{ r: 5 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-white">Trends</h2>
+
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardHeader>
+                  <CardTitle className="text-white text-sm">Views Over Time</CardTitle>
+                  <CardDescription className="text-zinc-400">
+                    {trend.length} data point{trend.length !== 1 ? "s" : ""}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                      <XAxis
+                        dataKey="time"
+                        tick={{ fill: "#71717a", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={{ stroke: "#3f3f46" }}
+                      />
+                      <YAxis
+                        tickFormatter={formatCount}
+                        tick={{ fill: "#71717a", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={48}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#18181b",
+                          border: "1px solid #3f3f46",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          color: "#f4f4f5",
+                        }}
+                        formatter={(value) => (typeof value === "number" ? formatCount(value) : value)}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Views"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "#3b82f6" }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardHeader>
+                  <CardTitle className="text-white text-sm">Likes Over Time</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                      <XAxis
+                        dataKey="time"
+                        tick={{ fill: "#71717a", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={{ stroke: "#3f3f46" }}
+                      />
+                      <YAxis
+                        tickFormatter={formatCount}
+                        tick={{ fill: "#71717a", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={48}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#18181b",
+                          border: "1px solid #3f3f46",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          color: "#f4f4f5",
+                        }}
+                        formatter={(value) => (typeof value === "number" ? formatCount(value) : value)}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Likes"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "#10b981" }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardHeader>
+                  <CardTitle className="text-white text-sm">Comments Over Time</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                      <XAxis
+                        dataKey="time"
+                        tick={{ fill: "#71717a", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={{ stroke: "#3f3f46" }}
+                      />
+                      <YAxis
+                        tickFormatter={formatCount}
+                        tick={{ fill: "#71717a", fontSize: 11 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={48}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#18181b",
+                          border: "1px solid #3f3f46",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          color: "#f4f4f5",
+                        }}
+                        formatter={(value) => (typeof value === "number" ? formatCount(value) : value)}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Comments"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "#f59e0b" }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
       )}

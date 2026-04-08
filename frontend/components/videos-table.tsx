@@ -217,7 +217,7 @@ export function VideosTable() {
                       <SortIcon col="CommentCount" sortKey={sortKey} sortDir={sortDir} />
                     </span>
                   </TableHead>
-                  <TableHead className="text-zinc-400 w-16"></TableHead>
+                  <TableHead className="text-zinc-400 w-16">Trends</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
