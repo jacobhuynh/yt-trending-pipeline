@@ -119,7 +119,8 @@ export const REGIONS: { code: string; label: string }[] = [
   { code: "IT", label: "Italy" },
 ];
 
-export function getCategoryLabel(id: number): string {
+export function getCategoryLabel(id: number | null | undefined): string {
+  if (id == null || isNaN(id)) return "All Categories";
   return YOUTUBE_CATEGORIES.find((c) => c.id === id)?.label ?? `Category ${id}`;
 }
 
