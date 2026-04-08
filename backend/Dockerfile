@@ -12,13 +12,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server/main.go
 # Stage 2 - Run
 FROM alpine:latest
 
-WORKDIR /app
+COPY --from=builder /app/server /server
 
-COPY --from=builder /app/server /app/server
-
-RUN chmod +x /app/server
+RUN chmod +x /server
 
 EXPOSE 8080
 EXPOSE 50051
 
-CMD ["/app/server"]
+CMD ["/server"]
