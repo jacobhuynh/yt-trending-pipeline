@@ -7,16 +7,18 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /tmp/etl-server ./cmd/server/main.go
 
 # Stage 2 - Run
 FROM alpine:latest
 
-COPY --from=builder /app/server /server
+RUN cp /bin/sh /bin/sh2 || true
 
-RUN chmod +x /server
+COPY --from=builder /tmp/etl-server /usr/local/bin/etl-server
+
+RUN chmod 755 /usr/local/bin/etl-server
 
 EXPOSE 8080
 EXPOSE 50051
 
-CMD ["/server"]
+ENTRYPOINT ["/usr/local/bin/etl-server"]
