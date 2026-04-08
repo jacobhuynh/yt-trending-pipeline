@@ -2,24 +2,42 @@ package api
 
 import (
 	"io"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jacobhuynh/youtube-etl-pipeline/db"
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
 )
 
 type APIServer struct {
 	client pb.ETLServiceClient
+	db     *db.DB
 }
 
-func New(client pb.ETLServiceClient) *APIServer {
-	return &APIServer{client: client}
+func New(client pb.ETLServiceClient, db *db.DB) *APIServer {
+	return &APIServer{client: client, db: db}
 }
 
 func (s *APIServer) RegisterRoutes(r *gin.Engine) {
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "http://localhost:3000")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
 	r.POST("/jobs", s.handleSubmitJob)
 	r.POST("/jobs/batch", s.handleSubmitBatch)
 	r.GET("/jobs/:id", s.handleGetJobStatus)
 	r.GET("/jobs/:id/watch", s.handleWatchJob)
+	r.GET("/videos", s.handleGetVideos)
+	r.GET("/analytics/top-channels", s.handleGetTopChannels)
+	r.GET("/analytics/videos/:id/trend", s.handleGetVideoTrend)
 }
 
 func (s *APIServer) handleSubmitJob(c *gin.Context) {
@@ -99,4 +117,44 @@ func (s *APIServer) handleWatchJob(c *gin.Context) {
 		c.SSEvent("update", update)
 		return true
 	})
+}
+
+func (s *APIServer) handleGetVideos(c *gin.Context) {
+	region := c.Query("region")
+	categoryId, _ := strconv.Atoi(c.Query("category_id"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	videos, err := s.db.GetVideos(c.Request.Context(), region, int32(categoryId), time.Time{}, time.Time{}, int32(limit), int32(offset))
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get videos"})
+		return
+	}
+
+	c.JSON(200, videos)
+}
+
+func (s *APIServer) handleGetTopChannels(c *gin.Context) {
+	region := c.Query("region")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	channels, err := s.db.GetTopChannels(c.Request.Context(), region, int32(limit))
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get top channels"})
+		return
+	}
+
+	c.JSON(200, channels)
+}
+
+func (s *APIServer) handleGetVideoTrend(c *gin.Context) {
+	videoId := c.Param("id")
+
+	trend, err := s.db.GetVideoTrend(c.Request.Context(), videoId)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get video trend"})
+		return
+	}
+
+	c.JSON(200, trend)
 }

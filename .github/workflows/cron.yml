@@ -1,0 +1,23 @@
+name: Hourly YouTube Trending Ingest
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch: # allows manual trigger from GitHub UI
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit batch ingest jobs
+        run: |
+          curl -X POST ${{ secrets.API_URL }}/jobs/batch \
+            -H "Content-Type: application/json" \
+            -d '[
+              {"region": "US", "category_id": 0, "max_results": 50, "idempotency_key": "cron-US-${{ github.run_id }}"},
+              {"region": "GB", "category_id": 0, "max_results": 50, "idempotency_key": "cron-GB-${{ github.run_id }}"},
+              {"region": "JP", "category_id": 0, "max_results": 50, "idempotency_key": "cron-JP-${{ github.run_id }}"},
+              {"region": "IN", "category_id": 0, "max_results": 50, "idempotency_key": "cron-IN-${{ github.run_id }}"},
+              {"region": "BR", "category_id": 0, "max_results": 50, "idempotency_key": "cron-BR-${{ github.run_id }}"},
+              {"region": "KR", "category_id": 0, "max_results": 50, "idempotency_key": "cron-KR-${{ github.run_id }}"}
+            ]'

@@ -60,7 +60,7 @@ func main() {
 	defer conn.Close()
 
 	grpcClient := pb.NewETLServiceClient(conn)
-	apiServer := api.New(grpcClient)
+	apiServer := api.New(grpcClient, db)
 
 	r := gin.Default()
 	apiServer.RegisterRoutes(r)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,20 @@ import (
 
 type DB struct {
 	pool *pgxpool.Pool
+}
+
+type ChannelStat struct {
+	ChannelId    string
+	ChannelTitle string
+	AppearCount  int
+	TotalViews   int64
+}
+
+type VideoTrendPoint struct {
+	FetchedAt    time.Time
+	ViewCount    int64
+	LikeCount    int64
+	CommentCount int64
 }
 
 func New(ctx context.Context, connString string) (*DB, error) {
@@ -89,6 +104,127 @@ func (d *DB) InsertVideo(ctx context.Context, video *client.Video) error {
 	_, err := d.pool.Exec(ctx, "INSERT INTO videos (video_id, job_id, region, fetched_at, title, channel_id, channel_title, published_at, category_id, view_count, like_count, comment_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
 		video.VideoId, video.JobId, video.Region, video.FetchedAt, video.Title, video.ChannelId, video.ChannelTitle, video.PublishedAt, video.CategoryId, video.ViewCount, video.LikeCount, video.CommentCount)
 	return err
+}
+
+func (d *DB) GetVideos(ctx context.Context, region string, categoryId int32, fetchedAfter time.Time, fetchedBefore time.Time, limit int32, offset int32) ([]*client.Video, error) {
+	query := "SELECT video_id, job_id, region, fetched_at, title, channel_id, channel_title, published_at, category_id, view_count, like_count, comment_count FROM videos WHERE 1=1"
+	args := []any{}
+	argNum := 1
+
+	if region != "" {
+		query += fmt.Sprintf(" AND region = $%d", argNum)
+		args = append(args, region)
+		argNum++
+	}
+
+	if categoryId != 0 {
+		query += fmt.Sprintf(" AND category_id = $%d", argNum)
+		args = append(args, categoryId)
+		argNum++
+	}
+
+	if !fetchedAfter.IsZero() {
+		query += fmt.Sprintf(" AND fetched_at > $%d", argNum)
+		args = append(args, fetchedAfter)
+		argNum++
+	}
+
+	if !fetchedBefore.IsZero() {
+		query += fmt.Sprintf(" AND fetched_at < $%d", argNum)
+		args = append(args, fetchedBefore)
+		argNum++
+	}
+
+	query += fmt.Sprintf(" ORDER BY fetched_at DESC LIMIT $%d OFFSET $%d", argNum, argNum+1)
+	args = append(args, limit, offset)
+
+	rows, err := d.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var videos []*client.Video
+	for rows.Next() {
+		video := &client.Video{}
+		err := rows.Scan(&video.VideoId, &video.JobId, &video.Region, &video.FetchedAt, &video.Title, &video.ChannelId, &video.ChannelTitle, &video.PublishedAt, &video.CategoryId, &video.ViewCount, &video.LikeCount, &video.CommentCount)
+		if err != nil {
+			return nil, err
+		}
+		videos = append(videos, video)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return videos, nil
+}
+
+func (d *DB) GetTopChannels(ctx context.Context, region string, limit int32) ([]*ChannelStat, error) {
+	query := `
+		SELECT channel_id, channel_title, COUNT(*) as appear_count, SUM(view_count) as total_views
+		FROM videos
+		WHERE 1=1`
+	args := []any{}
+	argNum := 1
+
+	if region != "" {
+		query += fmt.Sprintf(" AND region = $%d", argNum)
+		args = append(args, region)
+		argNum++
+	}
+
+	query += fmt.Sprintf(" GROUP BY channel_id, channel_title ORDER BY appear_count DESC LIMIT $%d", argNum)
+	args = append(args, limit)
+
+	rows, err := d.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []*ChannelStat
+	for rows.Next() {
+		stat := &ChannelStat{}
+		err := rows.Scan(&stat.ChannelId, &stat.ChannelTitle, &stat.AppearCount, &stat.TotalViews)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, stat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return stats, nil
+}
+
+func (d *DB) GetVideoTrend(ctx context.Context, videoId string) ([]*VideoTrendPoint, error) {
+	rows, err := d.pool.Query(ctx,
+		"SELECT fetched_at, view_count, like_count, comment_count FROM videos WHERE video_id = $1 ORDER BY fetched_at ASC",
+		videoId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var points []*VideoTrendPoint
+	for rows.Next() {
+		point := &VideoTrendPoint{}
+		err := rows.Scan(&point.FetchedAt, &point.ViewCount, &point.LikeCount, &point.CommentCount)
+		if err != nil {
+			return nil, err
+		}
+		points = append(points, point)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return points, nil
 }
 
 // Helpers
