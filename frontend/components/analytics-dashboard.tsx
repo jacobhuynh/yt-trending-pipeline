@@ -36,18 +36,31 @@ function formatCount(n: number): string {
   return String(n);
 }
 
-const BAR_COLORS = [
-  "#3b82f6",
-  "#6366f1",
-  "#8b5cf6",
-  "#a78bfa",
-  "#c4b5fd",
-  "#818cf8",
-  "#60a5fa",
-  "#38bdf8",
-  "#34d399",
-  "#4ade80",
-];
+const BAR_COLOR = "#3b82f6";
+const BAR_ACTIVE_COLOR = "#2563eb";
+
+function AppearancesTooltip({ active, payload, label }: {
+  active?: boolean;
+  payload?: Array<{ payload: { fullName?: string; Appearances: number; "Total Views": number } }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={{
+      backgroundColor: "#18181b",
+      border: "1px solid #3f3f46",
+      borderRadius: "6px",
+      padding: "8px 12px",
+      fontSize: "12px",
+      color: "#f4f4f5",
+    }}>
+      <p style={{ marginBottom: 4, color: "#a1a1aa" }}>{d.fullName ?? label}</p>
+      <p>Appearances: {d.Appearances}</p>
+      <p>Total Views: {d["Total Views"].toLocaleString()}</p>
+    </div>
+  );
+}
 
 export function AnalyticsDashboard() {
   const [region, setRegion] = useState("US");
@@ -210,55 +223,40 @@ export function AnalyticsDashboard() {
               No channel data available for {region}.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart
-                data={chartData}
-                layout="vertical"
-                margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
-                <XAxis
-                  type="number"
-                  tick={{ fill: "#71717a", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={{ stroke: "#3f3f46" }}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={130}
-                  tick={{ fill: "#a1a1aa", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#18181b",
-                    border: "1px solid #3f3f46",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    color: "#f4f4f5",
-                  }}
-                  formatter={(value, name) => [
-                    name === "Total Views" && typeof value === "number"
-                      ? formatCount(value)
-                      : value,
-                    name,
-                  ]}
-                  labelFormatter={(_label, payload) =>
-                    payload?.[0]?.payload?.fullName ?? _label
-                  }
-                />
-                <Bar
-                  dataKey="Appearances"
-                  radius={[0, 3, 3, 0]}
-                  shape={(props: { x?: number; y?: number; width?: number; height?: number; index?: number }) => {
-                    const { x = 0, y = 0, width = 0, height = 0, index = 0 } = props;
-                    return <rect x={x} y={y} width={width} height={height} fill={BAR_COLORS[index % BAR_COLORS.length]} rx={3} ry={3} />;
-                  }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="w-full overflow-hidden">
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart
+                  data={chartData}
+                  layout="vertical"
+                  margin={{ top: 8, right: 32, left: 8, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} vertical={true} />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: "#71717a", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: "#3f3f46" }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={130}
+                    tick={{ fill: "#a1a1aa", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip content={<AppearancesTooltip />} cursor={{ fill: "transparent" }} />
+                  <Bar
+                    dataKey="Appearances"
+                    fill={BAR_COLOR}
+                    activeBar={{ fill: BAR_ACTIVE_COLOR }}
+
+                    radius={[0, 3, 3, 0]}
+                    maxBarSize={28}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -278,51 +276,54 @@ export function AnalyticsDashboard() {
               Loading…
             </div>
           ) : channels.length === 0 ? null : (
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart
-                data={chartData}
-                layout="vertical"
-                margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
-                <XAxis
-                  type="number"
-                  tickFormatter={formatCount}
-                  tick={{ fill: "#71717a", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={{ stroke: "#3f3f46" }}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={130}
-                  tick={{ fill: "#a1a1aa", fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#18181b",
-                    border: "1px solid #3f3f46",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    color: "#f4f4f5",
-                  }}
-                  formatter={(value) => [typeof value === "number" ? formatCount(value) : value, "Total Views"]}
-                  labelFormatter={(_label, payload) =>
-                    payload?.[0]?.payload?.fullName ?? _label
-                  }
-                />
-                <Bar
-                  dataKey="Total Views"
-                  radius={[0, 3, 3, 0]}
-                  shape={(props: { x?: number; y?: number; width?: number; height?: number; index?: number }) => {
-                    const { x = 0, y = 0, width = 0, height = 0, index = 0 } = props;
-                    return <rect x={x} y={y} width={width} height={height} fill={BAR_COLORS[index % BAR_COLORS.length]} rx={3} ry={3} />;
-                  }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="w-full overflow-hidden">
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart
+                  data={chartData}
+                  layout="vertical"
+                  margin={{ top: 8, right: 32, left: 8, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} vertical={true} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={formatCount}
+                    tick={{ fill: "#71717a", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: "#3f3f46" }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={130}
+                    tick={{ fill: "#a1a1aa", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#18181b",
+                      border: "1px solid #3f3f46",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      color: "#f4f4f5",
+                    }}
+                    cursor={{ fill: "transparent" }}
+                    formatter={(value) => [typeof value === "number" ? formatCount(value) : value, "Total Views"]}
+                    labelFormatter={(_label, payload) =>
+                      payload?.[0]?.payload?.fullName ?? _label
+                    }
+                  />
+                  <Bar
+                    dataKey="Total Views"
+                    fill={BAR_COLOR}
+                    activeBar={{ fill: BAR_ACTIVE_COLOR }}
+
+                    radius={[0, 3, 3, 0]}
+                    maxBarSize={28}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </CardContent>
       </Card>

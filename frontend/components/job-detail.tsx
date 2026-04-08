@@ -17,7 +17,6 @@ import {
   isTerminalState,
   YOUTUBE_CATEGORIES,
 } from "@/lib/jobs";
-import { getJobMaxResults } from "@/components/jobs-list";
 import type { JobStatus, JobUpdate } from "@/types/jobs";
 import { Loader2, ArrowLeft, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,8 +50,6 @@ export function JobDetail({ jobId }: JobDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [liveConnected, setLiveConnected] = useState(false);
   const [updates, setUpdates] = useState<JobUpdate[]>([]);
-  const maxResults = getJobMaxResults(jobId);
-
   useEffect(() => {
     getJobStatus(jobId)
       .then((data) => {
@@ -124,15 +121,14 @@ export function JobDetail({ jobId }: JobDetailProps) {
   }
 
   const isActive = !isTerminalState(job.state);
-  // Use stored max_results as the denominator; fall back to videos_fetched once known
-  const fetchedDenominator = maxResults ?? (job.videos_fetched > 0 ? job.videos_fetched : null);
-  const fetchedPct = fetchedDenominator
-    ? Math.min(100, Math.round((job.videos_fetched / fetchedDenominator) * 100))
-    : null; // null → indeterminate while queued/running with no data yet
-  const insertedPct =
-    job.videos_fetched > 0
-      ? Math.min(100, Math.round((job.videos_inserted / job.videos_fetched) * 100))
-      : null;
+  const progressMax = Math.max(job.videos_fetched ?? 0, job.videos_inserted ?? 0, 1);
+  const hasData = (job.videos_fetched ?? 0) > 0 || (job.videos_inserted ?? 0) > 0;
+  const fetchedPct = hasData
+    ? Math.min(100, Math.round(((job.videos_fetched ?? 0) / progressMax) * 100))
+    : null;
+  const insertedPct = hasData
+    ? Math.min(100, Math.round(((job.videos_inserted ?? 0) / progressMax) * 100))
+    : null;
 
   return (
     <div className="space-y-6">
@@ -189,7 +185,7 @@ export function JobDetail({ jobId }: JobDetailProps) {
             <Separator className="bg-zinc-800/60" />
             <StatRow
               label="Attempt"
-              value={`${job.attempt ?? 0} / ${job.max_attempts ?? 0}`}
+              value={`${(job.attempt ?? 0) + 1} / ${job.max_attempts ?? 0}`}
             />
             <Separator className="bg-zinc-800/60" />
             <StatRow label="Created" value={formatTimestamp(job.created_at)} />
@@ -235,7 +231,6 @@ export function JobDetail({ jobId }: JobDetailProps) {
                   <span>Videos Fetched</span>
                   <span className="text-zinc-200 font-mono">
                     {job.videos_fetched ?? 0}
-                    {maxResults ? ` / ${maxResults}` : ""}
                   </span>
                 </div>
                 {fetchedPct === null && isActive ? (
