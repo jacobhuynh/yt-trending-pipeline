@@ -31,6 +31,9 @@ func (s *APIServer) RegisterRoutes(r *gin.Engine) {
 		c.Next()
 	})
 
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 	r.POST("/jobs", s.handleSubmitJob)
 	r.POST("/jobs/batch", s.handleSubmitBatch)
 	r.GET("/jobs/:id", s.handleGetJobStatus)
