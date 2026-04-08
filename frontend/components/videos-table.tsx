@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { getVideos } from "@/lib/api";
 import { REGIONS, YOUTUBE_CATEGORIES } from "@/lib/jobs";
 import type { Video } from "@/types/videos";
@@ -37,6 +38,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Search,
 } from "lucide-react";
 
 const PAGE_SIZE = 25;
@@ -70,6 +72,7 @@ function SortIcon({
 export function VideosTable() {
   const [region, setRegion] = useState("US");
   const [categoryId, setCategoryId] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +103,11 @@ export function VideosTable() {
     fetchVideos();
   }, [fetchVideos]);
 
+  function handleSearch(v: string) {
+    setSearch(v);
+    setPage(0);
+  }
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -110,7 +118,16 @@ export function VideosTable() {
     setPage(0);
   }
 
-  const sorted = [...videos].sort((a, b) => {
+  const searchLower = search.toLowerCase();
+  const filtered = searchLower
+    ? videos.filter(
+        (v) =>
+          v.Title.toLowerCase().includes(searchLower) ||
+          v.ChannelTitle.toLowerCase().includes(searchLower)
+      )
+    : videos;
+
+  const sorted = [...filtered].sort((a, b) => {
     const diff = a[sortKey] - b[sortKey];
     return sortDir === "desc" ? -diff : diff;
   });
@@ -127,10 +144,21 @@ export function VideosTable() {
             <CardDescription className="text-zinc-400">
               {loading
                 ? "Loading…"
+                : search
+                ? `${sorted.length} of ${videos.length} videos · page ${page + 1} of ${Math.max(1, totalPages)}`
                 : `${videos.length} videos · page ${page + 1} of ${Math.max(1, totalPages)}`}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+              <Input
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Search titles or channels…"
+                className="pl-7 h-8 w-56 bg-zinc-800 border-zinc-700 text-white text-xs placeholder:text-zinc-500"
+              />
+            </div>
             <Select value={region} onValueChange={(v) => v && setRegion(v)}>
               <SelectTrigger className="w-36 bg-zinc-800 border-zinc-700 text-white text-xs h-8">
                 <SelectValue />
@@ -228,10 +256,10 @@ export function VideosTable() {
                         href={`https://youtube.com/watch?v=${v.VideoId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="hover:text-blue-400 line-clamp-2 flex items-start gap-1.5"
+                        className="hover:text-blue-400 flex items-center gap-1.5 min-w-0"
                       >
-                        <span className="flex-1 min-w-0">{v.Title}</span>
-                        <ExternalLink className="h-3 w-3 shrink-0 mt-0.5 opacity-50" />
+                        <span className="truncate">{v.Title}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
                       </a>
                     </TableCell>
                     <TableCell className="text-zinc-400 text-xs">

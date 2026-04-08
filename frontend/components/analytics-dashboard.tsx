@@ -65,6 +65,7 @@ function AppearancesTooltip({ active, payload, label }: {
 export function AnalyticsDashboard() {
   const [region, setRegion] = useState("US");
   const [channels, setChannels] = useState<TopChannel[]>([]);
+  const [channelsByViews, setChannelsByViews] = useState<TopChannel[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [loadingChannels, setLoadingChannels] = useState(true);
   const [loadingVideos, setLoadingVideos] = useState(true);
@@ -74,8 +75,12 @@ export function AnalyticsDashboard() {
     setLoadingChannels(true);
     setChannelsError(null);
     try {
-      const data = await getTopChannels({ region, limit: 10 });
-      setChannels(data ?? []);
+      const [byAppearances, byViews] = await Promise.all([
+        getTopChannels({ region, limit: 10, sort_by: "appear_count" }),
+        getTopChannels({ region, limit: 10, sort_by: "total_views" }),
+      ]);
+      setChannels(byAppearances ?? []);
+      setChannelsByViews(byViews ?? []);
     } catch (e) {
       setChannelsError(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -116,10 +121,7 @@ export function AnalyticsDashboard() {
   });
 
   const chartData = channels.map(toChartEntry);
-
-  const viewsChartData = [...channels]
-    .sort((a, b) => b.TotalViews - a.TotalViews)
-    .map(toChartEntry);
+  const viewsChartData = channelsByViews.map(toChartEntry);
 
   return (
     <div className="space-y-6">

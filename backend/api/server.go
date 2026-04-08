@@ -145,8 +145,9 @@ func (s *APIServer) handleGetVideos(c *gin.Context) {
 func (s *APIServer) handleGetTopChannels(c *gin.Context) {
 	region := c.Query("region")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	sortBy := c.DefaultQuery("sort_by", "appear_count")
 
-	channels, err := s.db.GetTopChannels(c.Request.Context(), region, int32(limit))
+	channels, err := s.db.GetTopChannels(c.Request.Context(), region, int32(limit), sortBy)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get top channels"})
 		return

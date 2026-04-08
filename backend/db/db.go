@@ -162,7 +162,7 @@ func (d *DB) GetVideos(ctx context.Context, region string, categoryId int32, fet
 	return videos, nil
 }
 
-func (d *DB) GetTopChannels(ctx context.Context, region string, limit int32) ([]*ChannelStat, error) {
+func (d *DB) GetTopChannels(ctx context.Context, region string, limit int32, sortBy string) ([]*ChannelStat, error) {
 	query := `
 		SELECT channel_id, channel_title, COUNT(*) as appear_count, SUM(view_count) as total_views
 		FROM videos
@@ -176,7 +176,11 @@ func (d *DB) GetTopChannels(ctx context.Context, region string, limit int32) ([]
 		argNum++
 	}
 
-	query += fmt.Sprintf(" GROUP BY channel_id, channel_title ORDER BY appear_count DESC LIMIT $%d", argNum)
+	orderCol := "appear_count"
+	if sortBy == "total_views" {
+		orderCol = "total_views"
+	}
+	query += fmt.Sprintf(" GROUP BY channel_id, channel_title ORDER BY %s DESC LIMIT $%d", orderCol, argNum)
 	args = append(args, limit)
 
 	rows, err := d.pool.Query(ctx, query, args...)

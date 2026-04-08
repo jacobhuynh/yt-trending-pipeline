@@ -104,10 +104,12 @@ export async function getVideos(params: {
 export async function getTopChannels(params: {
   region?: string;
   limit?: number;
+  sort_by?: "appear_count" | "total_views";
 }): Promise<TopChannel[]> {
   const qs = new URLSearchParams();
   if (params.region) qs.set("region", params.region);
   if (params.limit != null) qs.set("limit", String(params.limit));
+  if (params.sort_by) qs.set("sort_by", params.sort_by);
   const res = await fetch(`${BASE_URL}/analytics/top-channels?${qs}`, {
     cache: "no-store",
   });
