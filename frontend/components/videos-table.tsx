@@ -148,11 +148,8 @@ export function VideosTable() {
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                <SelectItem value="all" className="focus:bg-zinc-700 text-xs">
-                  All Categories
-                </SelectItem>
                 {YOUTUBE_CATEGORIES.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)} className="focus:bg-zinc-700 text-xs">
+                  <SelectItem key={c.id} value={c.id === 0 ? "all" : String(c.id)} className="focus:bg-zinc-700 text-xs">
                     {c.label}
                   </SelectItem>
                 ))}

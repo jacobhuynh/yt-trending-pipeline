@@ -105,7 +105,7 @@ export function AnalyticsDashboard() {
     null
   );
 
-  const chartData = channels.map((c) => ({
+  const toChartEntry = (c: TopChannel) => ({
     name:
       c.ChannelTitle.length > 18
         ? c.ChannelTitle.slice(0, 17) + "…"
@@ -113,7 +113,13 @@ export function AnalyticsDashboard() {
     fullName: c.ChannelTitle,
     Appearances: c.AppearCount,
     "Total Views": c.TotalViews,
-  }));
+  });
+
+  const chartData = channels.map(toChartEntry);
+
+  const viewsChartData = [...channels]
+    .sort((a, b) => b.TotalViews - a.TotalViews)
+    .map(toChartEntry);
 
   return (
     <div className="space-y-6">
@@ -279,7 +285,7 @@ export function AnalyticsDashboard() {
             <div className="w-full overflow-hidden">
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart
-                  data={chartData}
+                  data={viewsChartData}
                   layout="vertical"
                   margin={{ top: 8, right: 32, left: 8, bottom: 8 }}
                 >
