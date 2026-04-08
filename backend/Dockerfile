@@ -10,11 +10,13 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server/main.go
 
 # Stage 2 - Run
-FROM gcr.io/distroless/static-debian12
+FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/server /app/server
+COPY --from=builder /app/server .
+
+RUN chmod +x /app/server
 
 EXPOSE 8080
 EXPOSE 50051
