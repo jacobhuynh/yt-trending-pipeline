@@ -24,10 +24,7 @@ export default function RootLayout({
         <header className="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-sm sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-6">
             <Link href="/" className="flex items-center gap-2 shrink-0">
-              <div className="h-6 w-6 rounded bg-red-600 flex items-center justify-center">
-                <span className="text-white text-xs font-bold">YT</span>
-              </div>
-              <span className="font-semibold text-white">ETL Pipeline</span>
+              <span className="font-semibold text-white">YouTube Analytics</span>
             </Link>
             <nav className="flex items-center gap-1">
               <Link
