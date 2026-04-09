@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "YouTube ETL Pipeline",
+  title: "YouTube Analytics",
   description: "Dashboard for the YouTube Trending Data ETL Pipeline",
 };
 
