@@ -8,15 +8,18 @@ import (
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
 )
 
+// APIServer is an HTTP gateway that forwards requests to the ETL and Analytics gRPC services.
 type APIServer struct {
 	ETLClient       pb.ETLServiceClient
 	AnalyticsClient pb.AnalyticsServiceClient
 }
 
+// New creates a new APIServer with the given ETL and Analytics gRPC clients.
 func New(ETLClient pb.ETLServiceClient, AnalyticsClient pb.AnalyticsServiceClient) *APIServer {
 	return &APIServer{ETLClient: ETLClient, AnalyticsClient: AnalyticsClient}
 }
 
+// RegisterRoutes mounts all API routes on the given Gin engine and configures CORS middleware.
 func (s *APIServer) RegisterRoutes(r *gin.Engine) {
 	r.Use(func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
@@ -46,6 +49,7 @@ func (s *APIServer) RegisterRoutes(r *gin.Engine) {
 	r.GET("/analytics/videos/:id/trend", s.handleGetVideoTrend)
 }
 
+// handleSubmitJob serves POST /jobs and forwards the request body as a single job to the ETL service.
 func (s *APIServer) handleSubmitJob(c *gin.Context) {
 	var req pb.JobRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -62,6 +66,7 @@ func (s *APIServer) handleSubmitJob(c *gin.Context) {
 	c.JSON(200, gin.H{"job_id": resp.JobId})
 }
 
+// handleSubmitBatch serves POST /jobs/batch and streams an array of job requests to the ETL service, returning aggregated results.
 func (s *APIServer) handleSubmitBatch(c *gin.Context) {
 	var reqs []*pb.JobRequest
 	if err := c.ShouldBindJSON(&reqs); err != nil {
@@ -91,6 +96,7 @@ func (s *APIServer) handleSubmitBatch(c *gin.Context) {
 	c.JSON(200, resp)
 }
 
+// handleGetJobStatus serves GET /jobs/:id and returns the current status of the specified job.
 func (s *APIServer) handleGetJobStatus(c *gin.Context) {
 	jobID := c.Param("id")
 	resp, err := s.ETLClient.GetJobStatus(c.Request.Context(), &pb.GetJobStatusRequest{JobId: jobID})
@@ -102,6 +108,7 @@ func (s *APIServer) handleGetJobStatus(c *gin.Context) {
 	c.JSON(200, resp)
 }
 
+// handleWatchJob serves GET /jobs/:id/watch and streams job state-change events to the client as SSE.
 func (s *APIServer) handleWatchJob(c *gin.Context) {
 	jobID := c.Param("id")
 
@@ -125,6 +132,7 @@ func (s *APIServer) handleWatchJob(c *gin.Context) {
 	})
 }
 
+// handleGetVideos serves GET /videos and accepts optional query params: region, category_id, limit, and offset.
 func (s *APIServer) handleGetVideos(c *gin.Context) {
 	region := c.Query("region")
 	categoryId, _ := strconv.Atoi(c.DefaultQuery("category_id", "0"))
@@ -144,6 +152,7 @@ func (s *APIServer) handleGetVideos(c *gin.Context) {
 	c.JSON(200, videos)
 }
 
+// handleGetTopChannels serves GET /analytics/top-channels and accepts optional query params: region, limit, and sort_by ("appear_count" or "total_views").
 func (s *APIServer) handleGetTopChannels(c *gin.Context) {
 	region := c.Query("region")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
@@ -170,6 +179,7 @@ func (s *APIServer) handleGetTopChannels(c *gin.Context) {
 	c.JSON(200, channels)
 }
 
+// handleGetVideoCount serves GET /videos/count and returns the total number of videos in the database.
 func (s *APIServer) handleGetVideoCount(c *gin.Context) {
 	resp, err := s.AnalyticsClient.GetVideosCount(c.Request.Context(), &pb.GetVideosCountRequest{})
 	if err != nil {
@@ -179,6 +189,7 @@ func (s *APIServer) handleGetVideoCount(c *gin.Context) {
 	c.JSON(200, resp)
 }
 
+// handleGetTrackedRegions serves GET /analytics/regions and returns the count and list of distinct tracked regions.
 func (s *APIServer) handleGetTrackedRegions(c *gin.Context) {
 	resp, err := s.AnalyticsClient.GetTrackedRegions(c.Request.Context(), &pb.GetTrackedRegionsRequest{})
 	if err != nil {
@@ -188,6 +199,7 @@ func (s *APIServer) handleGetTrackedRegions(c *gin.Context) {
 	c.JSON(200, resp)
 }
 
+// handleGetVideoTrend serves GET /analytics/videos/:id/trend and returns time-series engagement data for the specified video.
 func (s *APIServer) handleGetVideoTrend(c *gin.Context) {
 	videoId := c.Param("id")
 

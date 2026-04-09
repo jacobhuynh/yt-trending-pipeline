@@ -10,10 +10,12 @@ import (
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
 )
 
+// Client holds the YouTube Data API key used to authenticate requests.
 type Client struct {
 	APIKey string
 }
 
+// Video represents a single YouTube video and its engagement metrics at a point in time.
 type Video struct {
 	VideoId      string
 	JobId        string
@@ -53,6 +55,8 @@ type youtubeStats struct {
 	CommentCount string `json:"commentCount"`
 }
 
+// FetchTrending calls the YouTube Data API to retrieve the most popular videos for the region and category specified
+// in req, tagging each result with JobId, and returns them as a slice of Video.
 func (c *Client) FetchTrending(req *pb.JobRequest, JobId string) ([]Video, error) {
 	videos := make([]Video, 0, req.MaxResults)
 

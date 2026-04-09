@@ -10,17 +10,20 @@ import (
 	client "github.com/jacobhuynh/youtube-etl-pipeline/youtube"
 )
 
+// Worker consumes jobs from a channel, fetches trending videos via the YouTube client, and persists them to the database.
 type Worker struct {
 	jobQueue chan *Job
 	db       *db.DB
 	client   *client.Client
 }
 
+// Job holds the database job ID and the original request parameters for a single ETL run.
 type Job struct {
 	ID  string
 	Req *pb.JobRequest
 }
 
+// New creates a new Worker that reads from jobQueue and uses the given database and YouTube client.
 func New(jobQueue chan *Job, db *db.DB, client *client.Client) *Worker {
 	return &Worker{
 		jobQueue: jobQueue,
@@ -29,6 +32,7 @@ func New(jobQueue chan *Job, db *db.DB, client *client.Client) *Worker {
 	}
 }
 
+// Start launches a goroutine that processes jobs from the queue until ctx is cancelled.
 func (w *Worker) Start(ctx context.Context) {
 	go func() {
 		for {
@@ -42,7 +46,8 @@ func (w *Worker) Start(ctx context.Context) {
 	}()
 }
 
-// Helper
+// processJob executes a single ETL job with up to three attempts, using exponential backoff between retries.
+// It marks the job dead if all attempts fail or if a database update itself errors.
 func (w *Worker) processJob(ctx context.Context, req *Job) {
 	const maxAttempts = 3
 	var videosFetched, videosInserted int32

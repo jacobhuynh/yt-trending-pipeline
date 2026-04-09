@@ -13,16 +13,20 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// AnalyticsServer implements the AnalyticsService gRPC server, serving video and channel analytics with Redis caching.
 type AnalyticsServer struct {
 	pb.UnimplementedAnalyticsServiceServer
 	db    *db.DB
 	redis *redis.Client
 }
 
+// New creates a new AnalyticsServer backed by the given database and Redis client.
 func New(d *db.DB, r *redis.Client) *AnalyticsServer {
 	return &AnalyticsServer{db: d, redis: r}
 }
 
+// GetVideos returns a paginated list of videos filtered by region, category, and fetch time range.
+// Results are served from a one-hour Redis cache keyed on all filter parameters.
 func (s *AnalyticsServer) GetVideos(ctx context.Context, req *pb.GetVideosRequest) (*pb.GetVideosResponse, error) {
 	var fetchedAfter, fetchedBefore time.Time
 	if req.FetchedAfter != nil {
@@ -71,9 +75,17 @@ func (s *AnalyticsServer) GetVideos(ctx context.Context, req *pb.GetVideosReques
 			CommentCount: int64(v.CommentCount),
 		})
 	}
-	return &pb.GetVideosResponse{Videos: pbVideos}, nil
+
+	resp := &pb.GetVideosResponse{Videos: pbVideos}
+	if data, err := json.Marshal(resp); err == nil {
+		s.redis.Set(ctx, cacheKey, data, time.Hour)
+	}
+
+	return resp, nil
 }
 
+// GetTopChannels returns the top channels for a region sorted by appear count or total views.
+// Results are served from a one-hour Redis cache keyed on region, limit, and sort order.
 func (s *AnalyticsServer) GetTopChannels(ctx context.Context, req *pb.GetTopChannelsRequest) (*pb.GetTopChannelsResponse, error) {
 	var sortBy string
 	switch req.SortBy {
@@ -83,6 +95,15 @@ func (s *AnalyticsServer) GetTopChannels(ctx context.Context, req *pb.GetTopChan
 		sortBy = "total_views"
 	default:
 		sortBy = "appear_count"
+	}
+
+	cacheKey := fmt.Sprintf("top_channels:%s:%d:%s", req.Region, req.Limit, sortBy)
+	cached, err := s.redis.Get(ctx, cacheKey).Result()
+	if err == nil {
+		var resp pb.GetTopChannelsResponse
+		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
+			return &resp, nil
+		}
 	}
 
 	channels, err := s.db.GetTopChannels(ctx, req.Region, req.Limit, sortBy)
@@ -99,9 +120,15 @@ func (s *AnalyticsServer) GetTopChannels(ctx context.Context, req *pb.GetTopChan
 			ViewCount:    int64(c.TotalViews),
 		})
 	}
-	return &pb.GetTopChannelsResponse{Channels: pbChannels}, nil
+
+	resp := &pb.GetTopChannelsResponse{Channels: pbChannels}
+	if data, err := json.Marshal(resp); err == nil {
+		s.redis.Set(ctx, cacheKey, data, time.Hour)
+	}
+	return resp, nil
 }
 
+// GetVideosCount returns the total number of video rows stored in the database.
 func (s *AnalyticsServer) GetVideosCount(ctx context.Context, req *pb.GetVideosCountRequest) (*pb.GetVideosCountResponse, error) {
 	count, err := s.db.GetVideoCount(ctx)
 	if err != nil {
@@ -110,6 +137,7 @@ func (s *AnalyticsServer) GetVideosCount(ctx context.Context, req *pb.GetVideosC
 	return &pb.GetVideosCountResponse{Count: count}, nil
 }
 
+// GetTrackedRegions returns the count and list of distinct regions for which videos have been collected.
 func (s *AnalyticsServer) GetTrackedRegions(ctx context.Context, req *pb.GetTrackedRegionsRequest) (*pb.GetTrackedRegionsResponse, error) {
 	count, regions, err := s.db.GetTrackedRegions(ctx)
 	if err != nil {
@@ -118,6 +146,7 @@ func (s *AnalyticsServer) GetTrackedRegions(ctx context.Context, req *pb.GetTrac
 	return &pb.GetTrackedRegionsResponse{Count: count, Regions: regions}, nil
 }
 
+// GetVideoTrend returns the time-series trend data for a video, including view, like, and comment counts at each fetch.
 func (s *AnalyticsServer) GetVideoTrend(ctx context.Context, req *pb.GetVideoTrendRequest) (*pb.GetVideoTrendResponse, error) {
 	points, err := s.db.GetVideoTrend(ctx, req.VideoId)
 	if err != nil {

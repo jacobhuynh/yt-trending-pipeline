@@ -15,10 +15,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// DB wraps a pgxpool connection pool and provides methods for querying the database.
 type DB struct {
 	pool *pgxpool.Pool
 }
 
+// ChannelStat holds aggregated statistics for a single YouTube channel across all tracked videos.
 type ChannelStat struct {
 	ChannelId    string
 	ChannelTitle string
@@ -26,6 +28,7 @@ type ChannelStat struct {
 	TotalViews   int64
 }
 
+// VideoTrendPoint represents a single snapshot of a video's engagement metrics at a point in time.
 type VideoTrendPoint struct {
 	FetchedAt    time.Time
 	ViewCount    int64
@@ -33,6 +36,7 @@ type VideoTrendPoint struct {
 	CommentCount int64
 }
 
+// New creates a new DB by parsing connString and opening a pgxpool connection pool.
 func New(ctx context.Context, connString string) (*DB, error) {
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
@@ -48,6 +52,7 @@ func New(ctx context.Context, connString string) (*DB, error) {
 	return &DB{pool: pool}, nil
 }
 
+// InsertJob inserts a new job record into the jobs table and returns the generated job ID.
 func (d *DB) InsertJob(ctx context.Context, req *pb.JobRequest) (string, error) {
 	jobID := uuid.New().String()
 
@@ -70,42 +75,51 @@ func (d *DB) InsertJob(ctx context.Context, req *pb.JobRequest) (string, error) 
 	return jobID, nil
 }
 
+// GetJobByID retrieves a job's status from the jobs table by its job ID.
 func (d *DB) GetJobByID(ctx context.Context, id string) (*pb.JobStatus, error) {
 	row := d.pool.QueryRow(ctx, "SELECT * FROM jobs WHERE job_id = $1", id)
 	return scanJobStatus(row)
 }
 
+// GetJobByIdempotencyKey retrieves a job's status from the jobs table by its idempotency key.
 func (d *DB) GetJobByIdempotencyKey(ctx context.Context, key string) (*pb.JobStatus, error) {
 	row := d.pool.QueryRow(ctx, "SELECT * FROM jobs WHERE idempotency_key = $1", key)
 	return scanJobStatus(row)
 }
 
+// UpdateJobStarted marks the job as running and records its start time in the jobs table.
 func (d *DB) UpdateJobStarted(ctx context.Context, jobId string, startedAt time.Time) error {
 	_, err := d.pool.Exec(ctx, "UPDATE jobs SET state = $1, started_at = $2 WHERE job_id = $3", "running", startedAt, jobId)
 	return err
 }
 
+// UpdateJobCompleted marks the job as done and records its completion time and video counts in the jobs table.
 func (d *DB) UpdateJobCompleted(ctx context.Context, jobId string, completedAt time.Time, videosFetched, videosInserted int32) error {
 	_, err := d.pool.Exec(ctx, "UPDATE jobs SET state = $1, completed_at = $2, videos_fetched = $3, videos_inserted = $4, next_retry_at = NULL WHERE job_id = $5", "done", completedAt, videosFetched, videosInserted, jobId)
 	return err
 }
 
+// UpdateJobRetrying marks the job as retrying and records the error message, current attempt number, and next retry time in the jobs table.
 func (d *DB) UpdateJobRetrying(ctx context.Context, jobId string, errorMessage string, attempt int32, nextRetryAt *time.Time) error {
 	_, err := d.pool.Exec(ctx, "UPDATE jobs SET state = $1, error_message = $2, attempt = $3, next_retry_at = $4 WHERE job_id = $5", "retrying", errorMessage, attempt, nextRetryAt, jobId)
 	return err
 }
 
+// UpdateJobDead marks the job as dead with the given error message in the jobs table.
 func (d *DB) UpdateJobDead(ctx context.Context, jobId string, errorMessage string) error {
 	_, err := d.pool.Exec(ctx, "UPDATE jobs SET state = $1, error_message = $2, next_retry_at = NULL WHERE job_id = $3", "dead", errorMessage, jobId)
 	return err
 }
 
+// InsertVideo inserts a single video record into the videos table.
 func (d *DB) InsertVideo(ctx context.Context, video *client.Video) error {
 	_, err := d.pool.Exec(ctx, "INSERT INTO videos (video_id, job_id, region, fetched_at, title, channel_id, channel_title, published_at, category_id, view_count, like_count, comment_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
 		video.VideoId, video.JobId, video.Region, video.FetchedAt, video.Title, video.ChannelId, video.ChannelTitle, video.PublishedAt, video.CategoryId, video.ViewCount, video.LikeCount, video.CommentCount)
 	return err
 }
 
+// GetVideos queries the videos table for the most recent snapshot of each unique video, filtered by region,
+// category, and fetch time range, and returns results ordered by view count descending.
 func (d *DB) GetVideos(ctx context.Context, region string, categoryId int32, fetchedAfter time.Time, fetchedBefore time.Time, limit int32, offset int32) ([]*client.Video, error) {
 	inner := "SELECT DISTINCT ON (video_id) video_id, job_id, region, fetched_at, title, channel_id, channel_title, published_at, category_id, view_count, like_count, comment_count FROM videos WHERE 1=1"
 	args := []any{}
@@ -162,6 +176,7 @@ func (d *DB) GetVideos(ctx context.Context, region string, categoryId int32, fet
 	return videos, nil
 }
 
+// GetTopChannels queries the videos table for the top channels in a region, ordered by sortBy ("appear_count" or "total_views").
 func (d *DB) GetTopChannels(ctx context.Context, region string, limit int32, sortBy string) ([]*ChannelStat, error) {
 	query := `
 		SELECT channel_id, channel_title, COUNT(*) as appear_count, SUM(view_count) as total_views
@@ -206,12 +221,14 @@ func (d *DB) GetTopChannels(ctx context.Context, region string, limit int32, sor
 	return stats, nil
 }
 
+// GetVideoCount returns the total number of rows in the videos table.
 func (d *DB) GetVideoCount(ctx context.Context) (int64, error) {
 	var count int64
 	err := d.pool.QueryRow(ctx, "SELECT COUNT(*) FROM videos").Scan(&count)
 	return count, err
 }
 
+// GetTrackedRegions returns the count and list of distinct regions present in the videos table.
 func (d *DB) GetTrackedRegions(ctx context.Context) (int64, []string, error) {
 	var count int64
 	var regions []string
@@ -219,6 +236,7 @@ func (d *DB) GetTrackedRegions(ctx context.Context) (int64, []string, error) {
 	return count, regions, err
 }
 
+// GetVideoTrend returns all snapshots for a video from the videos table ordered by fetch time ascending.
 func (d *DB) GetVideoTrend(ctx context.Context, videoId string) ([]*VideoTrendPoint, error) {
 	rows, err := d.pool.Query(ctx,
 		"SELECT fetched_at, view_count, like_count, comment_count FROM videos WHERE video_id = $1 ORDER BY fetched_at ASC",
