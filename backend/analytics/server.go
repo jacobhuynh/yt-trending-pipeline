@@ -2,7 +2,11 @@ package analytics
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 
 	"github.com/jacobhuynh/youtube-etl-pipeline/db"
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
@@ -11,11 +15,12 @@ import (
 
 type AnalyticsServer struct {
 	pb.UnimplementedAnalyticsServiceServer
-	db *db.DB
+	db    *db.DB
+	redis *redis.Client
 }
 
-func New(d *db.DB) *AnalyticsServer {
-	return &AnalyticsServer{db: d}
+func New(d *db.DB, r *redis.Client) *AnalyticsServer {
+	return &AnalyticsServer{db: d, redis: r}
 }
 
 func (s *AnalyticsServer) GetVideos(ctx context.Context, req *pb.GetVideosRequest) (*pb.GetVideosResponse, error) {
@@ -25,6 +30,23 @@ func (s *AnalyticsServer) GetVideos(ctx context.Context, req *pb.GetVideosReques
 	}
 	if req.FetchedBefore != nil {
 		fetchedBefore = req.FetchedBefore.AsTime()
+	}
+
+	cacheKey := fmt.Sprintf("videos:%s:%d:%d:%d:%s:%s",
+		req.Region,
+		req.CategoryId,
+		req.Limit,
+		req.Offset,
+		fetchedAfter.Format(time.RFC3339),
+		fetchedBefore.Format(time.RFC3339),
+	)
+
+	cached, err := s.redis.Get(ctx, cacheKey).Result()
+	if err == nil {
+		var resp pb.GetVideosResponse
+		if err := json.Unmarshal([]byte(cached), &resp); err == nil {
+			return &resp, nil
+		}
 	}
 
 	videos, err := s.db.GetVideos(ctx, req.Region, req.CategoryId, fetchedAfter, fetchedBefore, req.Limit, req.Offset)

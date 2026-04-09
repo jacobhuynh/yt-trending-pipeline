@@ -19,6 +19,7 @@ import (
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
 	"github.com/jacobhuynh/youtube-etl-pipeline/worker"
 	client "github.com/jacobhuynh/youtube-etl-pipeline/youtube"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -26,11 +27,22 @@ func main() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	youtubeClient := &client.Client{APIKey: os.Getenv("YOUTUBE_API_KEY")}
 
+	// DB Connection
+
 	ctx := context.Background()
 	db, err := db.New(ctx, databaseURL)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
+
+	// Redis Connection
+
+	redisURL := os.Getenv("REDIS_URL")
+	opts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		log.Fatalf("failed to parse redis url: %v", err)
+	}
+	redisClient := redis.NewClient(opts)
 
 	// ETL gRPC Server
 
@@ -64,7 +76,7 @@ func main() {
 
 	// Analytics gRPC Server
 
-	analytics_server := analytics.New(db)
+	analytics_server := analytics.New(db, redisClient)
 	analytics_lis, err := net.Listen("tcp", ":50052")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
