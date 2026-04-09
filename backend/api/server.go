@@ -3,20 +3,18 @@ package api
 import (
 	"io"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jacobhuynh/youtube-etl-pipeline/db"
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
 )
 
 type APIServer struct {
-	client pb.ETLServiceClient
-	db     *db.DB
+	ETLClient       pb.ETLServiceClient
+	AnalyticsClient pb.AnalyticsServiceClient
 }
 
-func New(client pb.ETLServiceClient, db *db.DB) *APIServer {
-	return &APIServer{client: client, db: db}
+func New(ETLClient pb.ETLServiceClient, AnalyticsClient pb.AnalyticsServiceClient) *APIServer {
+	return &APIServer{ETLClient: ETLClient, AnalyticsClient: AnalyticsClient}
 }
 
 func (s *APIServer) RegisterRoutes(r *gin.Engine) {
@@ -55,7 +53,7 @@ func (s *APIServer) handleSubmitJob(c *gin.Context) {
 		return
 	}
 
-	resp, err := s.client.SubmitJob(c.Request.Context(), &req)
+	resp, err := s.ETLClient.SubmitJob(c.Request.Context(), &req)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to submit job"})
 		return
@@ -71,7 +69,7 @@ func (s *APIServer) handleSubmitBatch(c *gin.Context) {
 		return
 	}
 
-	stream, err := s.client.SubmitBatch(c.Request.Context())
+	stream, err := s.ETLClient.SubmitBatch(c.Request.Context())
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to submit batch job"})
 		return
@@ -95,7 +93,7 @@ func (s *APIServer) handleSubmitBatch(c *gin.Context) {
 
 func (s *APIServer) handleGetJobStatus(c *gin.Context) {
 	jobID := c.Param("id")
-	resp, err := s.client.GetJobStatus(c.Request.Context(), &pb.GetJobStatusRequest{JobId: jobID})
+	resp, err := s.ETLClient.GetJobStatus(c.Request.Context(), &pb.GetJobStatusRequest{JobId: jobID})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get job status"})
 		return
@@ -107,7 +105,7 @@ func (s *APIServer) handleGetJobStatus(c *gin.Context) {
 func (s *APIServer) handleWatchJob(c *gin.Context) {
 	jobID := c.Param("id")
 
-	stream, err := s.client.WatchJob(c.Request.Context(), &pb.WatchJobRequest{JobId: jobID})
+	stream, err := s.ETLClient.WatchJob(c.Request.Context(), &pb.WatchJobRequest{JobId: jobID})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to watch job"})
 		return
@@ -129,16 +127,20 @@ func (s *APIServer) handleWatchJob(c *gin.Context) {
 
 func (s *APIServer) handleGetVideos(c *gin.Context) {
 	region := c.Query("region")
-	categoryId, _ := strconv.Atoi(c.Query("category_id"))
+	categoryId, _ := strconv.Atoi(c.DefaultQuery("category_id", "0"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	videos, err := s.db.GetVideos(c.Request.Context(), region, int32(categoryId), time.Time{}, time.Time{}, int32(limit), int32(offset))
+	videos, err := s.AnalyticsClient.GetVideos(c.Request.Context(), &pb.GetVideosRequest{
+		Region:     region,
+		CategoryId: int32(categoryId),
+		Limit:      int32(limit),
+		Offset:     int32(offset),
+	})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get videos"})
 		return
 	}
-
 	c.JSON(200, videos)
 }
 
@@ -146,38 +148,50 @@ func (s *APIServer) handleGetTopChannels(c *gin.Context) {
 	region := c.Query("region")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	sortBy := c.DefaultQuery("sort_by", "appear_count")
+	var sortByEnum pb.SortBy
+	switch sortBy {
+	case "appear_count":
+		sortByEnum = pb.SortBy_APPEAR_COUNT
+	case "view_count":
+		sortByEnum = pb.SortBy_VIEW_COUNT
+	default:
+		sortByEnum = pb.SortBy_APPEAR_COUNT
+	}
 
-	channels, err := s.db.GetTopChannels(c.Request.Context(), region, int32(limit), sortBy)
+	channels, err := s.AnalyticsClient.GetTopChannels(c.Request.Context(), &pb.GetTopChannelsRequest{
+		Region: region,
+		Limit:  int32(limit),
+		SortBy: sortByEnum,
+	})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get top channels"})
 		return
 	}
-
 	c.JSON(200, channels)
 }
 
 func (s *APIServer) handleGetVideoCount(c *gin.Context) {
-	count, err := s.db.GetVideoCount(c.Request.Context())
+	resp, err := s.AnalyticsClient.GetVideosCount(c.Request.Context(), &pb.GetVideosCountRequest{})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get video count"})
 		return
 	}
-	c.JSON(200, gin.H{"count": count})
+	c.JSON(200, resp)
 }
 
 func (s *APIServer) handleGetTrackedRegions(c *gin.Context) {
-	count, regions, err := s.db.GetTrackedRegions(c.Request.Context())
+	resp, err := s.AnalyticsClient.GetTrackedRegions(c.Request.Context(), &pb.GetTrackedRegionsRequest{})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get tracked regions"})
 		return
 	}
-	c.JSON(200, gin.H{"count": count, "regions": regions})
+	c.JSON(200, resp)
 }
 
 func (s *APIServer) handleGetVideoTrend(c *gin.Context) {
 	videoId := c.Param("id")
 
-	trend, err := s.db.GetVideoTrend(c.Request.Context(), videoId)
+	trend, err := s.AnalyticsClient.GetVideoTrend(c.Request.Context(), &pb.GetVideoTrendRequest{VideoId: videoId})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get video trend"})
 		return

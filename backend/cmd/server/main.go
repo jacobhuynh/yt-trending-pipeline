@@ -12,10 +12,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jacobhuynh/youtube-etl-pipeline/analytics"
 	"github.com/jacobhuynh/youtube-etl-pipeline/api"
 	"github.com/jacobhuynh/youtube-etl-pipeline/db"
+	"github.com/jacobhuynh/youtube-etl-pipeline/etl"
 	"github.com/jacobhuynh/youtube-etl-pipeline/pb"
-	"github.com/jacobhuynh/youtube-etl-pipeline/server"
 	"github.com/jacobhuynh/youtube-etl-pipeline/worker"
 	client "github.com/jacobhuynh/youtube-etl-pipeline/youtube"
 )
@@ -31,36 +32,64 @@ func main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
-	server := server.New(db)
+	// ETL gRPC Server
 
-	lis, err := net.Listen("tcp", ":50051")
+	etl_server := etl.New(db)
+	etl_lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer()
-	pb.RegisterETLServiceServer(grpcServer, server)
+	etlGrpcServer := grpc.NewServer()
+	pb.RegisterETLServiceServer(etlGrpcServer, etl_server)
 
 	for i := 0; i < numWorkers; i++ {
-		w := worker.New(server.JobQueue(), db, youtubeClient)
+		w := worker.New(etl_server.JobQueue(), db, youtubeClient)
 		w.Start(ctx)
 	}
 
 	go func() {
 		log.Printf("gRPC server listening on :50051")
-		if err := grpcServer.Serve(lis); err != nil {
+		if err := etlGrpcServer.Serve(etl_lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
 
-	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	etl_conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to gRPC server: %v", err)
 	}
-	defer conn.Close()
+	defer etl_conn.Close()
+	grpcClient := pb.NewETLServiceClient(etl_conn)
 
-	grpcClient := pb.NewETLServiceClient(conn)
-	apiServer := api.New(grpcClient, db)
+	// Analytics gRPC Server
+
+	analytics_server := analytics.New(db)
+	analytics_lis, err := net.Listen("tcp", ":50052")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	analyticsGrpcServer := grpc.NewServer()
+	pb.RegisterAnalyticsServiceServer(analyticsGrpcServer, analytics_server)
+
+	go func() {
+		log.Printf("gRPC server listening on :50052")
+		if err := analyticsGrpcServer.Serve(analytics_lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
+
+	analytics_conn, err := grpc.NewClient("localhost:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to gRPC server: %v", err)
+	}
+	defer analytics_conn.Close()
+	analyticsClient := pb.NewAnalyticsServiceClient(analytics_conn)
+
+	// API Server
+
+	apiServer := api.New(grpcClient, analyticsClient)
 
 	r := gin.Default()
 	apiServer.RegisterRoutes(r)
@@ -77,5 +106,6 @@ func main() {
 	<-quit
 
 	log.Println("shutting down...")
-	grpcServer.GracefulStop()
+	etlGrpcServer.GracefulStop()
+	analyticsGrpcServer.GracefulStop()
 }

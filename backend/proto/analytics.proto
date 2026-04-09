@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package analytics;
+option go_package = "github.com/jacobhuynh/youtube-etl-pipeline/pb;pb";
+
+enum SortBy {
+    SORT_BY_UNSPECIFIED = 0;
+    APPEAR_COUNT = 1;
+    VIEW_COUNT = 2;
+}
+
+message GetVideosRequest {
+    string region = 1;
+    int32 category_id = 2;
+    google.protobuf.Timestamp fetched_after = 3;
+    google.protobuf.Timestamp fetched_before = 4;
+    int32 limit = 5;
+    int32 offset = 6;
+}
+
+message GetVideosResponse {
+    repeated Video videos = 1;
+}
+
+message Video {
+    string video_id = 1;
+    string job_id = 2;
+    string region = 3;
+    google.protobuf.Timestamp fetched_at = 4;
+    string title = 5;
+    string channel_id = 6;
+    string channel_title = 7;
+    google.protobuf.Timestamp published_at = 8;
+    int32 category_id = 9;
+    int64 view_count = 10;
+    int64 like_count = 11;
+    int64 comment_count = 12;
+}
+
+message GetTopChannelsRequest {
+    string region = 1;
+    int32 limit = 2;
+    SortBy sort_by = 3;
+}
+
+message GetTopChannelsResponse {
+    repeated Channel channels = 1;
+}
+
+message Channel {
+    string channel_id = 1;
+    string channel_title = 2;
+    int64 appear_count = 3;
+    int64 view_count = 4;
+}
+
+message GetVideosCountRequest {
+}
+
+message GetVideosCountResponse {
+    int64 count = 1;
+}
+
+message GetTrackedRegionsRequest {
+}
+
+message GetTrackedRegionsResponse {
+    int64 count = 1;
+    repeated string regions = 2;
+}
+
+message GetVideoTrendRequest {
+    string video_id = 1;
+}
+
+message GetVideoTrendResponse {
+    repeated TrendPoint points = 1;
+}
+
+message TrendPoint {
+    google.protobuf.Timestamp fetched_at = 1;
+    int64 view_count = 2;
+    int64 like_count = 3;
+    int64 comment_count = 4;
+}
+
+service AnalyticsService {
+    rpc GetVideos(GetVideosRequest) returns (GetVideosResponse);
+    rpc GetTopChannels(GetTopChannelsRequest) returns (GetTopChannelsResponse);
+    rpc GetVideosCount(GetVideosCountRequest) returns (GetVideosCountResponse);
+    rpc GetTrackedRegions(GetTrackedRegionsRequest) returns (GetTrackedRegionsResponse);
+    rpc GetVideoTrend(GetVideoTrendRequest) returns (GetVideoTrendResponse);
+}
