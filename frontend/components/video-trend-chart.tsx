@@ -33,7 +33,7 @@ function formatCount(n: number): string {
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 interface ChartDataPoint {
@@ -78,7 +78,7 @@ export function VideoTrendChart({ videoId }: Props) {
     time: formatDate(p.fetched_at),
     Views: p.view_count,
     Likes: p.like_count,
-    Comments: p.comment_count,
+    Comments: p.comment_count ?? 0,
   }));
 
   return (
@@ -141,7 +141,7 @@ export function VideoTrendChart({ videoId }: Props) {
                     <div>
                       <p className="text-xs text-zinc-500 uppercase tracking-wide">Comments</p>
                       <p className="text-white font-mono text-sm font-semibold mt-0.5">
-                        {formatCount(video.comment_count)}
+                        {formatCount(video.comment_count ?? 0)}
                       </p>
                     </div>
                   </div>
@@ -183,6 +183,7 @@ export function VideoTrendChart({ videoId }: Props) {
                         tickLine={false}
                         axisLine={false}
                         width={48}
+                        domain={[(dataMin: number) => Math.floor(dataMin * 0.95), "auto"]}
                       />
                       <Tooltip
                         contentStyle={{
@@ -227,6 +228,7 @@ export function VideoTrendChart({ videoId }: Props) {
                         tickLine={false}
                         axisLine={false}
                         width={48}
+                        domain={[(dataMin: number) => Math.floor(dataMin * 0.95), "auto"]}
                       />
                       <Tooltip
                         contentStyle={{
@@ -271,6 +273,7 @@ export function VideoTrendChart({ videoId }: Props) {
                         tickLine={false}
                         axisLine={false}
                         width={48}
+                        domain={[(dataMin: number) => Math.floor(dataMin * 0.95), "auto"]}
                       />
                       <Tooltip
                         contentStyle={{
