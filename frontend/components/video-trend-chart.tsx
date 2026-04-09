@@ -63,7 +63,7 @@ export function VideoTrendChart({ videoId }: Props) {
           getVideos({ limit: 200 }),
         ]);
         setTrend(trendData ?? []);
-        const found = (videos ?? []).find((v) => v.VideoId === videoId);
+        const found = (videos ?? []).find((v) => v.video_id === videoId);
         setVideo(found ?? null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load trend data");
@@ -75,10 +75,10 @@ export function VideoTrendChart({ videoId }: Props) {
   }, [videoId]);
 
   const chartData: ChartDataPoint[] = trend.map((p) => ({
-    time: formatDate(p.FetchedAt),
-    Views: p.ViewCount,
-    Likes: p.LikeCount,
-    Comments: p.CommentCount,
+    time: formatDate(p.fetched_at),
+    Views: p.view_count,
+    Likes: p.like_count,
+    Comments: p.comment_count,
   }));
 
   return (
@@ -120,28 +120,28 @@ export function VideoTrendChart({ videoId }: Props) {
                       rel="noopener noreferrer"
                       className="text-white font-semibold hover:text-blue-400 flex items-start gap-1.5"
                     >
-                      <span className="flex-1">{video.Title}</span>
+                      <span className="flex-1">{video.title}</span>
                       <ExternalLink className="h-4 w-4 shrink-0 mt-0.5 opacity-60" />
                     </a>
-                    <p className="text-zinc-400 text-sm mt-1">{video.ChannelTitle}</p>
+                    <p className="text-zinc-400 text-sm mt-1">{video.channel_title}</p>
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-center shrink-0">
                     <div>
                       <p className="text-xs text-zinc-500 uppercase tracking-wide">Views</p>
                       <p className="text-white font-mono text-sm font-semibold mt-0.5">
-                        {formatCount(video.ViewCount)}
+                        {formatCount(video.view_count)}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-zinc-500 uppercase tracking-wide">Likes</p>
                       <p className="text-white font-mono text-sm font-semibold mt-0.5">
-                        {formatCount(video.LikeCount)}
+                        {formatCount(video.like_count)}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-zinc-500 uppercase tracking-wide">Comments</p>
                       <p className="text-white font-mono text-sm font-semibold mt-0.5">
-                        {formatCount(video.CommentCount)}
+                        {formatCount(video.comment_count)}
                       </p>
                     </div>
                   </div>

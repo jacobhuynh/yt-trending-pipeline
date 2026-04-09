@@ -98,7 +98,8 @@ export async function getVideos(params: {
   if (params.offset != null) qs.set("offset", String(params.offset));
   const res = await fetch(`${BASE_URL}/videos?${qs}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch videos");
-  return res.json();
+  const data = await res.json();
+  return data.videos as Video[];
 }
 
 export async function getTopChannels(params: {
@@ -114,7 +115,8 @@ export async function getTopChannels(params: {
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Failed to fetch top channels");
-  return res.json();
+  const data = await res.json();
+  return data.channels as TopChannel[];
 }
 
 export async function getVideoTrend(id: string): Promise<TrendPoint[]> {
@@ -122,5 +124,6 @@ export async function getVideoTrend(id: string): Promise<TrendPoint[]> {
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Failed to fetch video trend");
-  return res.json();
+  const data = await res.json();
+  return data.points as TrendPoint[];
 }

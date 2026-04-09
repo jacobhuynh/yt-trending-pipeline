@@ -152,7 +152,7 @@ func (s *APIServer) handleGetTopChannels(c *gin.Context) {
 	switch sortBy {
 	case "appear_count":
 		sortByEnum = pb.SortBy_APPEAR_COUNT
-	case "view_count":
+	case "total_views":
 		sortByEnum = pb.SortBy_VIEW_COUNT
 	default:
 		sortByEnum = pb.SortBy_APPEAR_COUNT

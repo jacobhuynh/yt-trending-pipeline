@@ -57,7 +57,7 @@ function AppearancesTooltip({ active, payload, label }: {
     }}>
       <p style={{ marginBottom: 4, color: "#a1a1aa" }}>{d.fullName ?? label}</p>
       <p>Appearances: {d.Appearances}</p>
-      <p>Total Views: {d["Total Views"].toLocaleString()}</p>
+      <p>Total Views: {(d["Total Views"] ?? 0).toLocaleString()}</p>
     </div>
   );
 }
@@ -121,18 +121,18 @@ export function AnalyticsDashboard() {
   }, []);
 
   const mostViewed = videos.reduce<Video | null>(
-    (best, v) => (best == null || v.ViewCount > best.ViewCount ? v : best),
+    (best, v) => (best == null || v.view_count > best.view_count ? v : best),
     null
   );
 
   const toChartEntry = (c: TopChannel) => ({
     name:
-      c.ChannelTitle.length > 18
-        ? c.ChannelTitle.slice(0, 17) + "…"
-        : c.ChannelTitle,
-    fullName: c.ChannelTitle,
-    Appearances: c.AppearCount,
-    "Total Views": c.TotalViews,
+      c.channel_title.length > 18
+        ? c.channel_title.slice(0, 17) + "…"
+        : c.channel_title,
+    fullName: c.channel_title,
+    Appearances: c.appear_count,
+    "Total Views": c.view_count,
   });
 
   const chartData = channels.map(toChartEntry);
@@ -216,10 +216,10 @@ export function AnalyticsDashboard() {
                 ) : mostViewed ? (
                   <>
                     <p className="text-sm font-semibold text-white mt-1 line-clamp-1">
-                      {mostViewed.Title}
+                      {mostViewed.title}
                     </p>
                     <p className="text-xs text-zinc-400 font-mono">
-                      {formatCount(mostViewed.ViewCount)} views
+                      {formatCount(mostViewed.view_count)} views
                     </p>
                   </>
                 ) : (

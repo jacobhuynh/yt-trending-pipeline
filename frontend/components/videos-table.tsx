@@ -43,7 +43,7 @@ import {
 
 const PAGE_SIZE = 25;
 
-type SortKey = "ViewCount" | "LikeCount" | "CommentCount";
+type SortKey = "view_count" | "like_count" | "comment_count";
 type SortDir = "desc" | "asc";
 
 function formatCount(n: number): string {
@@ -77,7 +77,7 @@ export function VideosTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const [sortKey, setSortKey] = useState<SortKey>("ViewCount");
+  const [sortKey, setSortKey] = useState<SortKey>("view_count");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const fetchVideos = useCallback(async () => {
@@ -122,8 +122,8 @@ export function VideosTable() {
   const filtered = searchLower
     ? videos.filter(
         (v) =>
-          v.Title.toLowerCase().includes(searchLower) ||
-          v.ChannelTitle.toLowerCase().includes(searchLower)
+          v.title.toLowerCase().includes(searchLower) ||
+          v.channel_title.toLowerCase().includes(searchLower)
       )
     : videos;
 
@@ -217,29 +217,29 @@ export function VideosTable() {
                   <TableHead className="text-zinc-400">Channel</TableHead>
                   <TableHead
                     className="text-zinc-400 cursor-pointer select-none"
-                    onClick={() => toggleSort("ViewCount")}
+                    onClick={() => toggleSort("view_count")}
                   >
                     <span className="flex items-center">
                       Views
-                      <SortIcon col="ViewCount" sortKey={sortKey} sortDir={sortDir} />
+                      <SortIcon col="view_count" sortKey={sortKey} sortDir={sortDir} />
                     </span>
                   </TableHead>
                   <TableHead
                     className="text-zinc-400 cursor-pointer select-none"
-                    onClick={() => toggleSort("LikeCount")}
+                    onClick={() => toggleSort("like_count")}
                   >
                     <span className="flex items-center">
                       Likes
-                      <SortIcon col="LikeCount" sortKey={sortKey} sortDir={sortDir} />
+                      <SortIcon col="like_count" sortKey={sortKey} sortDir={sortDir} />
                     </span>
                   </TableHead>
                   <TableHead
                     className="text-zinc-400 cursor-pointer select-none"
-                    onClick={() => toggleSort("CommentCount")}
+                    onClick={() => toggleSort("comment_count")}
                   >
                     <span className="flex items-center">
                       Comments
-                      <SortIcon col="CommentCount" sortKey={sortKey} sortDir={sortDir} />
+                      <SortIcon col="comment_count" sortKey={sortKey} sortDir={sortDir} />
                     </span>
                   </TableHead>
                   <TableHead className="text-zinc-400 w-16">Trends</TableHead>
@@ -248,34 +248,34 @@ export function VideosTable() {
               <TableBody>
                 {pageSlice.map((v) => (
                   <TableRow
-                    key={`${v.VideoId}-${v.FetchedAt}`}
+                    key={`${v.video_id}-${v.fetched_at}`}
                     className="border-zinc-800 hover:bg-zinc-800/50"
                   >
                     <TableCell className="text-zinc-100 text-sm max-w-0">
                       <a
-                        href={`https://youtube.com/watch?v=${v.VideoId}`}
+                        href={`https://youtube.com/watch?v=${v.video_id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-blue-400 flex items-center gap-1.5 min-w-0"
                       >
-                        <span className="truncate">{v.Title}</span>
+                        <span className="truncate">{v.title}</span>
                         <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
                       </a>
                     </TableCell>
                     <TableCell className="text-zinc-400 text-xs">
-                      {v.ChannelTitle}
+                      {v.channel_title}
                     </TableCell>
                     <TableCell className="text-zinc-300 text-xs font-mono">
-                      {formatCount(v.ViewCount)}
+                      {formatCount(v.view_count)}
                     </TableCell>
                     <TableCell className="text-zinc-300 text-xs font-mono">
-                      {formatCount(v.LikeCount)}
+                      {formatCount(v.like_count)}
                     </TableCell>
                     <TableCell className="text-zinc-300 text-xs font-mono">
-                      {formatCount(v.CommentCount)}
+                      {formatCount(v.comment_count)}
                     </TableCell>
                     <TableCell>
-                      <Link href={`/videos/${v.VideoId}/trend`}>
+                      <Link href={`/videos/${v.video_id}/trend`}>
                         <Button
                           variant="ghost"
                           size="icon"
